@@ -192,7 +192,7 @@ export default function BookingEngine() {
                   ) : (
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                       <div className="bg-blue-50 text-blue-800 p-4 rounded-xl mb-6 flex items-start gap-3 border border-blue-200">
-                        <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
                         <p className="text-sm font-medium">{holdMessage}</p>
                       </div>
                       
