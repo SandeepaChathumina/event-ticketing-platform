@@ -9,6 +9,7 @@ import { Film, ArrowLeft } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MovieList from "../components/MovieList";
+import BrowseMovies from "../components/BrowseMovies"; // Ensure this file exists
 import ShowtimeList from "../components/ShowtimeList";
 import SeatMap from "../components/SeatMap";
 import CheckoutPanel from "../components/CheckoutPanel";
@@ -16,7 +17,7 @@ import SuccessTicket from "../components/SuccessTicket";
 import { Movie, Showtime } from "../types";
 
 export default function CinemaHome() {
-  const [view, setView] = useState<'movies' | 'showtimes' | 'seats' | 'checkout' | 'success'>('movies');
+  const [view, setView] = useState<'movies' | 'browse' | 'showtimes' | 'seats' | 'checkout' | 'success'>('movies');
   const [movies, setMovies] = useState<Movie[]>([]);
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [bookedSeats, setBookedSeats] = useState<string[]>([]);
@@ -92,21 +93,14 @@ export default function CinemaHome() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50">
-      {/* Pass resetFlow to Navbar */}
-      <Navbar onNavigateHome={resetFlow} />
+      <Navbar onNavigateHome={resetFlow} onNavigateBrowse={() => setView('browse')} />
       
-      {/* Hero Section - Only show on 'movies' view */}
       {view === 'movies' && (
         <section className="pt-32 pb-20 px-6 max-w-7xl mx-auto text-center">
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="text-6xl md:text-8xl font-black mb-6 tracking-tighter"
-          >
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl md:text-8xl font-black mb-6 tracking-tighter">
             GREAT STORIES. <span className="text-rose-600">BIG SCREEN.</span>
           </motion.h1>
-          <p className="text-xl text-neutral-400 max-w-2xl mx-auto">
-            Book your tickets for the latest blockbusters at Dons Plaza. Comfort, clarity, and the magic of film.
-          </p>
+          <p className="text-xl text-neutral-400 max-w-2xl mx-auto">Book your tickets for the latest blockbusters at Dons Plaza.</p>
         </section>
       )}
 
@@ -119,34 +113,17 @@ export default function CinemaHome() {
 
         {errorMessage && <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 mb-8 rounded-xl">{errorMessage}</div>}
 
+        {/* View Switcher */}
         {view === 'movies' && (
           <div className="space-y-20">
-            {/* Now Showing Section */}
             <section>
-              <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
-                <span className="w-1 h-8 bg-rose-600 rounded-full"></span> Now Showing
-              </h2>
+              <h2 className="text-3xl font-bold mb-10 flex items-center gap-3"><span className="w-1 h-8 bg-rose-600 rounded-full"></span> Now Showing</h2>
               <MovieList movies={movies} onSelectMovie={handleSelectMovie} />
-            </section>
-
-            {/* Upcoming Movies Section */}
-            <section>
-              <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
-                <span className="w-1 h-8 bg-neutral-600 rounded-full"></span> Coming Soon
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl opacity-60">
-                    <div className="w-full h-48 bg-neutral-800 rounded-xl mb-4"></div>
-                    <div className="h-4 bg-neutral-800 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-neutral-800 rounded w-1/2"></div>
-                  </div>
-                ))}
-              </div>
             </section>
           </div>
         )}
         
+        {view === 'browse' && <BrowseMovies movies={movies} onSelectMovie={handleSelectMovie} />}
         {view === 'showtimes' && selectedMovie && <ShowtimeList selectedMovie={selectedMovie} showtimes={showtimes} onSelectShowtime={handleSelectShowtime} />}
         {view === 'seats' && selectedShowtime && <SeatMap selectedShowtime={selectedShowtime} bookedSeats={bookedSeats} onHoldSeat={handleHoldSeat} />}
         {view === 'checkout' && selectedShowtime && selectedSeat && <CheckoutPanel selectedShowtime={selectedShowtime} selectedSeat={selectedSeat} onCheckout={handleCheckout} />}
