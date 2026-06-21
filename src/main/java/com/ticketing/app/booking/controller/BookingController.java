@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import com.ticketing.app.booking.model.Ticket;
 
 @RestController
 @RequestMapping("/api/v1/bookings")
@@ -46,5 +48,12 @@ public class BookingController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Checkout failed. You either do not hold the lock for this seat, or the 10-minute hold expired.");
         }
+    }
+
+    // --- NEW ENDPOINT FOR PHASE 5 ---
+    @GetMapping("/tickets")
+    public ResponseEntity<List<Ticket>> getTicketsForShowtime(@RequestParam Long showtimeId) {
+        // We will add the logic for this in the BookingService next!
+        return ResponseEntity.ok(bookingService.getTicketsByShowtime(showtimeId));
     }
 }

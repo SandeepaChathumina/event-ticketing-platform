@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -43,5 +44,11 @@ public class BookingService {
         ticketLockService.releaseLock(showtimeId, seatId, userId);
 
         return true;
+    }
+
+    // --- NEW METHOD FOR PHASE 5 ---
+    public List<Ticket> getTicketsByShowtime(Long showtimeId) {
+        // This uses the method we already defined in TicketRepository during Phase 2!
+        return ticketRepository.findByShowtimeId(showtimeId);
     }
 }
