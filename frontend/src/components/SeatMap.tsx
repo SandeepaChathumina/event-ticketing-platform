@@ -23,7 +23,7 @@ export default function SeatMap({ selectedShowtime, bookedSeats, onHoldSeat }: S
       </div>
 
       <div className="relative w-full h-24 mb-20 flex justify-center">
-        <div className="absolute top-0 w-3/4 h-full bg-gradient-to-b from-white/20 to-transparent rounded-t-[100%] blur-sm opacity-50"></div>
+        <div className="absolute top-0 w-3/4 h-full bg-linear-to-b from-white/20 to-transparent rounded-t-[100%] blur-sm opacity-50"></div>
         <div className="absolute top-4 w-2/3 h-2 bg-rose-500/50 shadow-[0_0_30px_10px_rgba(244,63,94,0.3)] rounded-full"></div>
         <p className="absolute top-10 text-neutral-500 uppercase tracking-[0.5em] text-sm font-bold">Screen</p>
       </div>
