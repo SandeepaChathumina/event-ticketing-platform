@@ -36,4 +36,9 @@ public class CatalogController {
     public ResponseEntity<List<Showtime>> getShowtimes(@RequestParam Long movieId) {
         return ResponseEntity.ok(catalogService.getShowtimesByMovie(movieId));
     }
+
+    @GetMapping("/movies")
+    public ResponseEntity<List<Movie>> getAllMovies() {
+      return ResponseEntity.ok(catalogService.getAllMovies());
+    }
 }

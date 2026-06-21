@@ -23,9 +23,9 @@ public class CatalogService {
         return movieRepository.save(movie);
     }
 
-    public Screen addScreen(Screen screen) {
-        return screenRepository.save(screen);
-    }
+      public Screen addScreen(Screen screen) {
+          return screenRepository.save(screen);
+      }
 
     public Showtime addShowtime(Showtime showtime) {
         // In a real production app, we would add validation here to ensure 
@@ -35,5 +35,9 @@ public class CatalogService {
 
     public List<Showtime> getShowtimesByMovie(Long movieId) {
         return showtimeRepository.findByMovieId(movieId);
+    }
+
+    public List<Movie> getAllMovies() {
+        return movieRepository.findAll();
     }
 }
