@@ -1,5 +1,6 @@
 package com.ticketing.app.booking.controller;
 
+import com.ticketing.app.booking.service.BookingService;
 import com.ticketing.app.booking.service.TicketLockService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 public class BookingController {
 
     private final TicketLockService ticketLockService;
+    private final BookingService bookingService; // Injected the new service
 
     @PostMapping("/hold")
     public ResponseEntity<String> holdTicket(
@@ -26,6 +28,24 @@ public class BookingController {
         } else {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body("Seat " + seatId + " is currently on hold by someone else. Please try again later.");
+        }
+    }
+
+    // This is the new endpoint that was returning the 404
+    @PostMapping("/checkout")
+    public ResponseEntity<String> checkout(
+            @RequestParam Long eventId, 
+            @RequestParam String seatId, 
+            @RequestParam String userId,
+            @RequestParam String creditCardNumber) {
+            
+        boolean success = bookingService.confirmBooking(eventId, seatId, userId, creditCardNumber);
+        
+        if (success) {
+            return ResponseEntity.ok("Payment successful! Ticket for seat " + seatId + " has been booked and saved to PostgreSQL.");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Checkout failed. You either do not hold the lock for this seat, or the 10-minute hold expired.");
         }
     }
 }
