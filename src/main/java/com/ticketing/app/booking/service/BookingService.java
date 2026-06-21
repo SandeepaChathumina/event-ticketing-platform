@@ -2,6 +2,7 @@ package com.ticketing.app.booking.service;
 
 import com.ticketing.app.booking.model.Ticket;
 import com.ticketing.app.booking.repository.TicketRepository;
+import com.ticketing.app.catalog.api.CatalogServiceAPI; // Added import for the Catalog API
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,9 @@ public class BookingService {
     private final TicketRepository ticketRepository;
     private final TicketLockService ticketLockService;
     private final StringRedisTemplate redisTemplate;
+    
+    // 1. Inject the cross-module API interface
+    private final CatalogServiceAPI catalogServiceAPI;
 
     public boolean confirmBooking(Long eventId, String seatId, String userId, String creditCardNumber) {
         String lockKey = "lock:event:" + eventId + ":seat:" + seatId;
@@ -43,7 +47,10 @@ public class BookingService {
         ticket.setStatus("CONFIRMED");
         ticketRepository.save(ticket);
 
-        // 5. Release the Redis lock so it doesn't just sit there
+        // 5. Cross-module communication: Talk to the Catalog module to reduce the seat count!
+        catalogServiceAPI.decrementAvailableSeats(eventId);
+
+        // 6. Release the Redis lock so it doesn't just sit there
         ticketLockService.releaseLock(eventId, seatId, userId);
 
         return true;
