@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ticketing_db
+    username: postgres
+    password: Sigma2002@
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update # Automatically creates tables based on your Java models (good for dev)
+    show-sql: true # Prints SQL queries in the console so you can see what Hibernate is doing
+    properties:
+      hibernate:
+        format_sql: true
