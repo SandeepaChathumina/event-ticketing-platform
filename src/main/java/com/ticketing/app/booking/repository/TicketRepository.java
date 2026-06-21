@@ -3,9 +3,14 @@ package com.ticketing.app.booking.repository;
 import com.ticketing.app.booking.model.Ticket;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
-    // Allows us to find all tickets bought by a specific user later
-    boolean existsByEventIdAndSeatId(Long eventId, String seatId);
+    
+    // Checks if a seat is already sold for a specific movie showtime
+    boolean existsByShowtimeIdAndSeatId(Long showtimeId, String seatId);
+    
+    // We will need this later for the frontend to know which seats to gray out!
+    List<Ticket> findByShowtimeId(Long showtimeId);
 }

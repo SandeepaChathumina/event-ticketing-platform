@@ -13,15 +13,15 @@ import org.springframework.web.bind.annotation.*;
 public class BookingController {
 
     private final TicketLockService ticketLockService;
-    private final BookingService bookingService; // Injected the new service
+    private final BookingService bookingService; 
 
     @PostMapping("/hold")
     public ResponseEntity<String> holdTicket(
-            @RequestParam Long eventId, 
+            @RequestParam Long showtimeId, 
             @RequestParam String seatId, 
             @RequestParam String userId) {
             
-        boolean lockAcquired = ticketLockService.acquireLock(eventId, seatId, userId);
+        boolean lockAcquired = ticketLockService.acquireLock(showtimeId, seatId, userId);
         
         if (lockAcquired) {
             return ResponseEntity.ok("Seat " + seatId + " locked successfully for 10 minutes for User: " + userId);
@@ -31,15 +31,14 @@ public class BookingController {
         }
     }
 
-    // This is the new endpoint that was returning the 404
     @PostMapping("/checkout")
     public ResponseEntity<String> checkout(
-            @RequestParam Long eventId, 
+            @RequestParam Long showtimeId, 
             @RequestParam String seatId, 
             @RequestParam String userId,
             @RequestParam String creditCardNumber) {
             
-        boolean success = bookingService.confirmBooking(eventId, seatId, userId, creditCardNumber);
+        boolean success = bookingService.confirmBooking(showtimeId, seatId, userId, creditCardNumber);
         
         if (success) {
             return ResponseEntity.ok("Payment successful! Ticket for seat " + seatId + " has been booked and saved to PostgreSQL.");

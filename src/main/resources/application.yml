@@ -6,7 +6,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update # Automatically creates tables based on your Java models (good for dev)
+      ddl-auto: create # Automatically creates tables based on your Java models (good for dev)
     show-sql: true # Prints SQL queries in the console so you can see what Hibernate is doing
     properties:
       hibernate:

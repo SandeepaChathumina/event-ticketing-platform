@@ -18,8 +18,9 @@ public class Ticket {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // A ticket is now linked to a specific showtime (e.g., Dune at 7pm)
     @Column(nullable = false)
-    private Long eventId;
+    private Long showtimeId;
 
     @Column(nullable = false)
     private String seatId;
