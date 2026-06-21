@@ -15,8 +15,8 @@ export default function MovieList({ movies, onSelectMovie }: MovieListProps) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
       {movieList.map((movie) => (
         <div key={movie.id} className="group">
-          <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-6 shadow-2xl border border-white/5 cursor-pointer" onClick={() => onSelectMovie(movie)}>
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10 opacity-80 group-hover:opacity-60 transition" />
+          <div className="relative aspect-2/3 rounded-2xl overflow-hidden mb-6 shadow-2xl border border-white/5 cursor-pointer" onClick={() => onSelectMovie(movie)}>
+            <div className="absolute inset-0 bg-linear-to-t from-black via-black/20 to-transparent z-10 opacity-80 group-hover:opacity-60 transition" />
             <img src={movie.posterUrl} alt={movie.title} className="object-cover w-full h-full group-hover:scale-110 transition duration-700 ease-out" />
             <div className="absolute top-4 right-4 z-20 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-xs font-bold uppercase tracking-wider">
               {movie.ageRating}
