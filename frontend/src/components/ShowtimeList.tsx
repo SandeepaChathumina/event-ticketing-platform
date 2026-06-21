@@ -20,7 +20,7 @@ export default function ShowtimeList({ selectedMovie, showtimes, onSelectShowtim
         <img 
           src={selectedMovie.posterUrl || "/placeholder.jpg"} 
           alt={selectedMovie.title || "Movie Poster"} 
-          className="w-full md:w-1/3 rounded-2xl shadow-2xl border border-white/10 aspect-[2/3] object-cover" 
+          className="w-full md:w-1/3 rounded-2xl shadow-2xl border border-white/10 aspect-2/3 object-cover" 
         />
         <div className="flex-1">
           <h2 className="text-5xl font-bold mb-4">{selectedMovie.title}</h2>
