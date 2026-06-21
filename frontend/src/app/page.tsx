@@ -107,7 +107,7 @@ export default function CinemaHome() {
     <main className="min-h-screen bg-neutral-950 text-neutral-50 p-6 md:p-12">
       <div className="max-w-6xl mx-auto">
         <header className="mb-12 border-b border-neutral-800 pb-6 flex justify-between items-end">
-          <h1 onClick={resetFlow} className="text-4xl font-black cursor-pointer bg-gradient-to-r from-rose-500 to-orange-400 bg-clip-text text-transparent">
+          <h1 onClick={resetFlow} className="text-4xl font-black cursor-pointer bg-linear-to-r from-rose-500 to-orange-400 bg-clip-text text-transparent">
             CineTicket
           </h1>
           {view !== 'movies' && view !== 'success' && (
