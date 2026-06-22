@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { motion } from "framer-motion";
-import { Film, ArrowLeft } from "lucide-react";
+import { Film, ArrowLeft, Loader2 } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
 
 // Components
 import Navbar from "../components/Navbar";
@@ -18,6 +19,10 @@ import SuccessTicket from "../components/SuccessTicket";
 import AuthModal from "../components/AuthModal";
 import AdminDashboard from "../components/AdminDashboard";
 import { Movie, Showtime } from "../types";
+
+// Initialize Stripe outside of the component to avoid recreating the object on every render
+// Replace 'pk_test_...' with your actual Stripe Publishable Key
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_YOUR_STRIPE_KEY");
 
 export default function CinemaHome() {
   const router = useRouter();
@@ -50,6 +55,9 @@ export default function CinemaHome() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [userToken, setUserToken] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Payment Gateway State
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Helper function to guarantee a string is returned for error messages
   const getErrorMessage = (error: any, fallback: string): string => {
@@ -92,7 +100,6 @@ export default function CinemaHome() {
     }
   };
 
-  // Updated to receive roles from AuthModal!
   const handleLoginSuccess = (token: string, email: string, roles: string[]) => {
     setUserToken(token);
     setUserEmail(email);
@@ -101,7 +108,6 @@ export default function CinemaHome() {
     const cleanEmail = email.trim().toLowerCase();
     setUserId(cleanEmail);
 
-    // Securely check if the backend granted this user the ADMIN role
     if (roles && roles.includes("ROLE_ADMIN")) {
       setView("dashboard");
     } else {
@@ -142,7 +148,6 @@ export default function CinemaHome() {
   const handleHoldSeat = async (seatId: string) => {
     setErrorMessage("");
     try {
-      // Allow request to go through regardless of login status (Guests can book)
       await axios.post("http://localhost:8080/api/v1/bookings/hold", null, {
         params: { showtimeId: selectedShowtime?.id, seatId, userId },
       });
@@ -157,18 +162,56 @@ export default function CinemaHome() {
   };
 
   const handleCheckout = async () => {
+    setErrorMessage("");
+    setIsProcessingPayment(true);
+
     try {
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error("Stripe failed to initialize.");
+
+      /* =========================================================================
+         STRIPE INTEGRATION 
+         Uncomment this block once your Spring Boot backend has the Stripe endpoint
+         =========================================================================
+      
+      // 1. Create a checkout session on the backend
+      const response = await axios.post("http://localhost:8080/api/v1/payments/create-checkout-session", {
+        showtimeId: selectedShowtime?.id,
+        seatId: selectedSeat,
+        userId: userId,
+        amount: selectedShowtime?.ticketPrice
+      });
+
+      // 2. Redirect to Stripe's secure checkout page
+      const result = await stripe.redirectToCheckout({
+        sessionId: response.data.sessionId,
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+      
+      ========================================================================= */
+
+      // --- TEMPORARY SIMULATION UNTIL BACKEND STRIPE IS READY ---
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+
       await axios.post("http://localhost:8080/api/v1/bookings/checkout", null, {
         params: {
           showtimeId: selectedShowtime?.id,
           seatId: selectedSeat,
           userId,
-          creditCardNumber: "4111222233334444",
+          creditCardNumber: "tok_visa", // Sending a mock Stripe token instead of raw card
         },
       });
+      
       setView("success");
+      // --------------------------------------------------------
+
     } catch (error: any) {
-      setErrorMessage(getErrorMessage(error, "Checkout failed."));
+      setErrorMessage(getErrorMessage(error, "Checkout failed during payment processing."));
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -188,7 +231,7 @@ export default function CinemaHome() {
     );
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50">
+    <div className="min-h-screen bg-neutral-950 text-neutral-50 relative">
       <Navbar
         onNavigateHome={resetFlow}
         onNavigateBrowse={() => setView("browse")}
@@ -207,6 +250,17 @@ export default function CinemaHome() {
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
       />
+
+      {/* Payment Gateway Processing Overlay */}
+      {isProcessingPayment && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-neutral-950/90 backdrop-blur-md">
+          <div className="text-center bg-neutral-900 p-10 rounded-3xl border border-neutral-800 shadow-2xl">
+            <Loader2 className="w-12 h-12 text-rose-500 animate-spin mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Redirecting to Stripe...</h2>
+            <p className="text-neutral-400">Securely communicating with the payment gateway...</p>
+          </div>
+        </div>
+      )}
 
       {view === "movies" && (
         <section className="pt-32 pb-20 px-6 max-w-7xl mx-auto text-center">
