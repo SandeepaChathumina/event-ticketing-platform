@@ -3,7 +3,7 @@ package com.ticketing.app;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.ticketing.app")
 public class TicketingApplication {
 
 	public static void main(String[] args) {

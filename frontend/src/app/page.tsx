@@ -28,6 +28,20 @@ export default function CinemaHome() {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Helper function to guarantee a string is returned for error messages
+  const getErrorMessage = (error: any, fallback: string): string => {
+    if (typeof error?.response?.data === 'string') {
+      return error.response.data;
+    }
+    if (typeof error?.response?.data?.message === 'string') {
+      return error.response.data.message;
+    }
+    if (typeof error?.message === 'string') {
+       return error.message;
+    }
+    return fallback;
+  };
+
   useEffect(() => {
     fetchMovies();
   }, []);
@@ -46,15 +60,20 @@ export default function CinemaHome() {
     try {
       const response = await axios.get("http://localhost:8080/api/v1/catalog/movies");
       setMovies(response.data);
-    } catch (err) { console.error("Failed to load movies"); }
-    finally { setLoading(false); }
+    } catch (err) { 
+      console.error("Failed to load movies", err); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const fetchBookedSeats = async (showtimeId: number) => {
     try {
       const response = await axios.get(`http://localhost:8080/api/v1/bookings/tickets?showtimeId=${showtimeId}`);
       setBookedSeats(response.data.map((t: any) => t.seatId));
-    } catch (err) { console.error("Could not refresh seat map."); }
+    } catch (err) { 
+      console.error("Could not refresh seat map.", err); 
+    }
   };
 
   const handleSelectMovie = async (movie: Movie) => {
@@ -63,7 +82,9 @@ export default function CinemaHome() {
     try {
       const response = await axios.get(`http://localhost:8080/api/v1/catalog/showtimes?movieId=${movie.id}`);
       setShowtimes(response.data);
-    } catch (err) { setErrorMessage("Failed to load showtimes."); }
+    } catch (err: any) { 
+      setErrorMessage(getErrorMessage(err, "Failed to load showtimes.")); 
+    }
   };
 
   const handleSelectShowtime = async (st: Showtime) => {
@@ -81,10 +102,9 @@ export default function CinemaHome() {
       setSelectedSeat(seatId);
       setView('checkout');
     } catch (error: any) {
-      const message = error.response?.data && typeof error.response.data === 'string'
-        ? error.response.data
-        : (error.response?.data?.message || "Seat unavailable. Please try another.");
-      setErrorMessage(message);
+      // Safely apply the error extraction
+      setErrorMessage(getErrorMessage(error, "Seat unavailable. Please try another."));
+      setSelectedSeat(null); // Clear selected seat if holding fails
     }
   };
 
@@ -95,10 +115,8 @@ export default function CinemaHome() {
       });
       setView('success');
     } catch (error: any) { 
-      const message = error.response?.data && typeof error.response.data === 'string'
-        ? error.response.data
-        : (error.response?.data?.message || "Checkout failed.");
-      setErrorMessage(message);
+      // Safely apply the error extraction
+      setErrorMessage(getErrorMessage(error, "Checkout failed."));
     }
   };
 
