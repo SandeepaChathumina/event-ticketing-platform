@@ -14,6 +14,7 @@ import ShowtimeList from "../components/ShowtimeList";
 import SeatMap from "../components/SeatMap";
 import CheckoutPanel from "../components/CheckoutPanel";
 import SuccessTicket from "../components/SuccessTicket";
+import AuthModal from "../components/AuthModal";
 import { Movie, Showtime } from "../types";
 
 export default function CinemaHome() {
@@ -24,9 +25,14 @@ export default function CinemaHome() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
-  const [userId] = useState(() => "User-" + Math.floor(Math.random() * 10000));
+  const [userId, setUserId] = useState(() => "User-" + Math.floor(Math.random() * 10000));
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Authentication State
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [userToken, setUserToken] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Helper function to guarantee a string is returned for error messages
   const getErrorMessage = (error: any, fallback: string): string => {
@@ -94,6 +100,12 @@ export default function CinemaHome() {
   };
 
   const handleHoldSeat = async (seatId: string) => {
+    // Check if user is authenticated before allowing them to hold a seat
+    if (!userToken) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setErrorMessage("");
     try {
       await axios.post("http://localhost:8080/api/v1/bookings/hold", null, {
@@ -132,7 +144,28 @@ export default function CinemaHome() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50">
-      <Navbar onNavigateHome={resetFlow} onNavigateBrowse={() => setView('browse')} />
+      <Navbar 
+        onNavigateHome={resetFlow} 
+        onNavigateBrowse={() => setView('browse')} 
+        userEmail={userEmail}
+        onLoginClick={() => setIsAuthModalOpen(true)}
+        onLogout={() => {
+          setUserToken(null);
+          setUserEmail(null);
+          setUserId("User-" + Math.floor(Math.random() * 10000));
+        }}
+      />
+      
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        onLoginSuccess={(token, email) => {
+          setUserToken(token);
+          setUserEmail(email);
+          setUserId(email); // Use their actual email as the database userId
+          setIsAuthModalOpen(false);
+        }}
+      />
       
       {view === 'movies' && (
         <section className="pt-32 pb-20 px-6 max-w-7xl mx-auto text-center">
