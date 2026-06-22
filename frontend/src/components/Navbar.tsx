@@ -16,7 +16,7 @@ export default function Navbar({ onNavigateHome, onNavigateBrowse, userEmail, on
         <div className="flex gap-8 text-sm font-bold text-neutral-400 items-center">
           <button onClick={onNavigateHome} className="hover:text-white transition">MOVIES</button>
           {onNavigateBrowse && <button onClick={onNavigateBrowse} className="hover:text-white transition">BROWSE</button>}
-          <a href="/admin" className="hover:text-white transition">ADMIN</a>
+          <a href="/contact" className="hover:text-white transition">CONTACT</a>
           
           {userEmail ? (
             <div className="flex items-center gap-4 border-l border-neutral-800 pl-6 ml-2">

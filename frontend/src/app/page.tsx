@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { motion } from "framer-motion";
 import { Film, ArrowLeft } from "lucide-react";
@@ -18,14 +19,26 @@ import AuthModal from "../components/AuthModal";
 import { Movie, Showtime } from "../types";
 
 export default function CinemaHome() {
-  const [view, setView] = useState<'movies' | 'browse' | 'showtimes' | 'seats' | 'checkout' | 'success'>('movies');
+  const router = useRouter();
+  const [view, setView] = useState<
+    | "movies"
+    | "browse"
+    | "showtimes"
+    | "seats"
+    | "checkout"
+    | "success"
+  >("movies");
   const [movies, setMovies] = useState<Movie[]>([]);
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [bookedSeats, setBookedSeats] = useState<string[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
-  const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
+  const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(
+    null,
+  );
   const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
-  const [userId, setUserId] = useState(() => "User-" + Math.floor(Math.random() * 10000));
+  const [userId, setUserId] = useState(
+    () => "User-" + Math.floor(Math.random() * 10000),
+  );
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -33,17 +46,18 @@ export default function CinemaHome() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [userToken, setUserToken] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
 
   // Helper function to guarantee a string is returned for error messages
   const getErrorMessage = (error: any, fallback: string): string => {
-    if (typeof error?.response?.data === 'string') {
+    if (typeof error?.response?.data === "string") {
       return error.response.data;
     }
-    if (typeof error?.response?.data?.message === 'string') {
+    if (typeof error?.response?.data?.message === "string") {
       return error.response.data.message;
     }
-    if (typeof error?.message === 'string') {
-       return error.message;
+    if (typeof error?.message === "string") {
+      return error.message;
     }
     return fallback;
   };
@@ -54,7 +68,7 @@ export default function CinemaHome() {
 
   // Polling effect: Refreshes booked seats every 3 seconds while in 'seats' view
   useEffect(() => {
-    if (view === 'seats' && selectedShowtime) {
+    if (view === "seats" && selectedShowtime) {
       const interval = setInterval(() => {
         fetchBookedSeats(selectedShowtime.id);
       }, 3000);
@@ -64,38 +78,62 @@ export default function CinemaHome() {
 
   const fetchMovies = async () => {
     try {
-      const response = await axios.get("http://localhost:8080/api/v1/catalog/movies");
+      const response = await axios.get(
+        "http://localhost:8080/api/v1/catalog/movies",
+      );
       setMovies(response.data);
-    } catch (err) { 
-      console.error("Failed to load movies", err); 
-    } finally { 
-      setLoading(false); 
+    } catch (err) {
+      console.error("Failed to load movies", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoginSuccess = (token: string, email: string, roles: string[]) => {
+    console.log("handleLoginSuccess called with:", { token, email, roles });
+    setUserToken(token);
+    setUserEmail(email);
+    setUserRoles(roles);
+    setIsAuthModalOpen(false);
+
+    // Check if user has ROLE_ADMIN to navigate to admin dashboard
+    console.log("Checking roles:", roles, "Includes ROLE_ADMIN:", roles.includes("ROLE_ADMIN"));
+    if (roles.includes("ROLE_ADMIN")) {
+      console.log("Admin detected! Pushing to /admin");
+      router.push("/admin");
+    } else {
+      setUserId(email.trim().toLowerCase());
+      setView("movies");
     }
   };
 
   const fetchBookedSeats = async (showtimeId: number) => {
     try {
-      const response = await axios.get(`http://localhost:8080/api/v1/bookings/tickets?showtimeId=${showtimeId}`);
+      const response = await axios.get(
+        `http://localhost:8080/api/v1/bookings/tickets?showtimeId=${showtimeId}`,
+      );
       setBookedSeats(response.data.map((t: any) => t.seatId));
-    } catch (err) { 
-      console.error("Could not refresh seat map.", err); 
+    } catch (err) {
+      console.error("Could not refresh seat map.", err);
     }
   };
 
   const handleSelectMovie = async (movie: Movie) => {
     setSelectedMovie(movie);
-    setView('showtimes');
+    setView("showtimes");
     try {
-      const response = await axios.get(`http://localhost:8080/api/v1/catalog/showtimes?movieId=${movie.id}`);
+      const response = await axios.get(
+        `http://localhost:8080/api/v1/catalog/showtimes?movieId=${movie.id}`,
+      );
       setShowtimes(response.data);
-    } catch (err: any) { 
-      setErrorMessage(getErrorMessage(err, "Failed to load showtimes.")); 
+    } catch (err: any) {
+      setErrorMessage(getErrorMessage(err, "Failed to load showtimes."));
     }
   };
 
   const handleSelectShowtime = async (st: Showtime) => {
     setSelectedShowtime(st);
-    setView('seats');
+    setView("seats");
     fetchBookedSeats(st.id);
   };
 
@@ -109,13 +147,15 @@ export default function CinemaHome() {
     setErrorMessage("");
     try {
       await axios.post("http://localhost:8080/api/v1/bookings/hold", null, {
-        params: { showtimeId: selectedShowtime?.id, seatId, userId }
+        params: { showtimeId: selectedShowtime?.id, seatId, userId },
       });
       setSelectedSeat(seatId);
-      setView('checkout');
+      setView("checkout");
     } catch (error: any) {
       // Safely apply the error extraction
-      setErrorMessage(getErrorMessage(error, "Seat unavailable. Please try another."));
+      setErrorMessage(
+        getErrorMessage(error, "Seat unavailable. Please try another."),
+      );
       setSelectedSeat(null); // Clear selected seat if holding fails
     }
   };
@@ -123,30 +163,40 @@ export default function CinemaHome() {
   const handleCheckout = async () => {
     try {
       await axios.post("http://localhost:8080/api/v1/bookings/checkout", null, {
-        params: { showtimeId: selectedShowtime?.id, seatId: selectedSeat, userId, creditCardNumber: "4111222233334444" }
+        params: {
+          showtimeId: selectedShowtime?.id,
+          seatId: selectedSeat,
+          userId,
+          creditCardNumber: "4111222233334444",
+        },
       });
-      setView('success');
-    } catch (error: any) { 
+      setView("success");
+    } catch (error: any) {
       // Safely apply the error extraction
       setErrorMessage(getErrorMessage(error, "Checkout failed."));
     }
   };
 
   const resetFlow = () => {
-    setView('movies');
+    setView("movies");
     setSelectedMovie(null);
     setSelectedShowtime(null);
     setSelectedSeat(null);
     setErrorMessage("");
   };
 
-  if (loading) return <div className="min-h-screen bg-neutral-950 flex items-center justify-center"><Film className="w-12 h-12 text-rose-500 animate-pulse" /></div>;
+  if (loading)
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <Film className="w-12 h-12 text-rose-500 animate-pulse" />
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50">
-      <Navbar 
-        onNavigateHome={resetFlow} 
-        onNavigateBrowse={() => setView('browse')} 
+      <Navbar
+        onNavigateHome={resetFlow}
+        onNavigateBrowse={() => setView("browse")}
         userEmail={userEmail}
         onLoginClick={() => setIsAuthModalOpen(true)}
         onLogout={() => {
@@ -155,41 +205,77 @@ export default function CinemaHome() {
           setUserId("User-" + Math.floor(Math.random() * 10000));
         }}
       />
-      
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        onLoginSuccess={(token, email) => {
-          setUserToken(token);
-          setUserEmail(email);
-          setUserId(email); // Use their actual email as the database userId
-          setIsAuthModalOpen(false);
-        }}
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
       />
-      
-      {view === 'movies' && (
+
+      {view === "movies" && (
         <section className="pt-32 pb-20 px-6 max-w-7xl mx-auto text-center">
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl md:text-8xl font-black mb-6 tracking-tighter">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-6xl md:text-8xl font-black mb-6 tracking-tighter"
+          >
             GREAT STORIES. <span className="text-rose-600">BIG SCREEN.</span>
           </motion.h1>
         </section>
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-12">
-        {view !== 'movies' && view !== 'success' && (
-          <button onClick={() => setView(view === 'checkout' ? 'seats' : 'movies')} className="mb-8 flex items-center text-rose-400 font-bold uppercase text-sm">
+        {view !== "movies" && view !== "success" && (
+          <button
+            onClick={() =>
+              setView(view === "checkout" ? "seats" : "movies")
+            }
+            className="mb-8 flex items-center text-rose-400 font-bold uppercase text-sm"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </button>
         )}
 
-        {errorMessage && <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 mb-8 rounded-xl">{errorMessage}</div>}
+        {errorMessage && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 mb-8 rounded-xl">
+            {errorMessage}
+          </div>
+        )}
 
-        {view === 'movies' && <MovieList movies={movies} onSelectMovie={handleSelectMovie} />}
-        {view === 'browse' && <BrowseMovies movies={movies} onSelectMovie={handleSelectMovie} />}
-        {view === 'showtimes' && selectedMovie && <ShowtimeList selectedMovie={selectedMovie} showtimes={showtimes} onSelectShowtime={handleSelectShowtime} />}
-        {view === 'seats' && selectedShowtime && <SeatMap selectedShowtime={selectedShowtime} bookedSeats={bookedSeats} onHoldSeat={handleHoldSeat} />}
-        {view === 'checkout' && selectedShowtime && selectedSeat && <CheckoutPanel selectedShowtime={selectedShowtime} selectedSeat={selectedSeat} onCheckout={handleCheckout} />}
-        {view === 'success' && selectedSeat && <SuccessTicket selectedSeat={selectedSeat} userId={userId} onReset={resetFlow} />}
+        {view === "movies" && (
+          <MovieList movies={movies} onSelectMovie={handleSelectMovie} />
+        )}
+        {view === "browse" && (
+          <BrowseMovies movies={movies} onSelectMovie={handleSelectMovie} />
+        )}
+        {view === "showtimes" && selectedMovie && (
+          <ShowtimeList
+            selectedMovie={selectedMovie}
+            showtimes={showtimes}
+            onSelectShowtime={handleSelectShowtime}
+          />
+        )}
+        {view === "seats" && selectedShowtime && (
+          <SeatMap
+            selectedShowtime={selectedShowtime}
+            bookedSeats={bookedSeats}
+            onHoldSeat={handleHoldSeat}
+          />
+        )}
+        {view === "checkout" && selectedShowtime && selectedSeat && (
+          <CheckoutPanel
+            selectedShowtime={selectedShowtime}
+            selectedSeat={selectedSeat}
+            onCheckout={handleCheckout}
+          />
+        )}
+        {view === "success" && selectedSeat && (
+          <SuccessTicket
+            selectedSeat={selectedSeat}
+            userId={userId}
+            onReset={resetFlow}
+          />
+        )}
       </main>
 
       <Footer />

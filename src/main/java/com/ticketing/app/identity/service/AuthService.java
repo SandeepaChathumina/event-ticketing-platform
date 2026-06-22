@@ -36,6 +36,21 @@ public class AuthService {
         User user = userRepository.findByEmail(email).orElseThrow();
         String token = jwtUtil.generateToken(user);
         
-        return new AuthResponse(token);
+        return new AuthResponse(token, email, user.getRoles());
+    }
+
+    public void makeUserAdmin(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        Set<String> roles = user.getRoles();
+        if (roles == null || roles.isEmpty()) {
+            roles = new java.util.HashSet<>();
+        } else {
+            roles = new java.util.HashSet<>(roles);
+        }
+        roles.add("ROLE_ADMIN");
+        user.setRoles(roles);
+        userRepository.save(user);
     }
 }

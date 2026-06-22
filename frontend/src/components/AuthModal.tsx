@@ -6,7 +6,7 @@ import axios from "axios";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (token: string, email: string) => void;
+  onLoginSuccess: (token: string, email: string, roles: string[]) => void;
 }
 
 export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
@@ -27,12 +27,16 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       if (isLogin) {
         // Handle Login
         const response = await axios.post("http://localhost:8080/api/v1/auth/login", { email, password });
-        onLoginSuccess(response.data.token, email);
+        console.log("Login response:", response.data);
+        console.log("Roles:", response.data.roles);
+        onLoginSuccess(response.data.token, response.data.email, response.data.roles || []);
       } else {
         // Handle Registration & Auto-Login
         await axios.post("http://localhost:8080/api/v1/auth/register", { email, password });
         const loginResponse = await axios.post("http://localhost:8080/api/v1/auth/login", { email, password });
-        onLoginSuccess(loginResponse.data.token, email);
+        console.log("Auto-login response:", loginResponse.data);
+        console.log("Roles:", loginResponse.data.roles);
+        onLoginSuccess(loginResponse.data.token, loginResponse.data.email, loginResponse.data.roles || []);
       }
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || err.response?.data || (isLogin ? "Invalid credentials" : "Registration failed");

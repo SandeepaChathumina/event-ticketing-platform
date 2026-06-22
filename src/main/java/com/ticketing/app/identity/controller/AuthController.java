@@ -39,4 +39,14 @@ public class AuthController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+
+    @PostMapping("/make-admin/{email}")
+    public ResponseEntity<String> makeAdmin(@PathVariable String email) {
+        try {
+            authService.makeUserAdmin(email);
+            return ResponseEntity.ok("User promoted to admin");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to promote user: " + e.getMessage());
+        }
+    }
 }
