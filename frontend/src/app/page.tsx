@@ -9,7 +9,7 @@ import { Film, ArrowLeft } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import MovieList from "../components/MovieList";
-import BrowseMovies from "../components/BrowseMovies"; // Ensure this file exists
+import BrowseMovies from "../components/BrowseMovies";
 import ShowtimeList from "../components/ShowtimeList";
 import SeatMap from "../components/SeatMap";
 import CheckoutPanel from "../components/CheckoutPanel";
@@ -32,12 +32,29 @@ export default function CinemaHome() {
     fetchMovies();
   }, []);
 
+  // Polling effect: Refreshes booked seats every 3 seconds while in 'seats' view
+  useEffect(() => {
+    if (view === 'seats' && selectedShowtime) {
+      const interval = setInterval(() => {
+        fetchBookedSeats(selectedShowtime.id);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [view, selectedShowtime]);
+
   const fetchMovies = async () => {
     try {
       const response = await axios.get("http://localhost:8080/api/v1/catalog/movies");
       setMovies(response.data);
     } catch (err) { console.error("Failed to load movies"); }
     finally { setLoading(false); }
+  };
+
+  const fetchBookedSeats = async (showtimeId: number) => {
+    try {
+      const response = await axios.get(`http://localhost:8080/api/v1/bookings/tickets?showtimeId=${showtimeId}`);
+      setBookedSeats(response.data.map((t: any) => t.seatId));
+    } catch (err) { console.error("Could not refresh seat map."); }
   };
 
   const handleSelectMovie = async (movie: Movie) => {
@@ -52,23 +69,22 @@ export default function CinemaHome() {
   const handleSelectShowtime = async (st: Showtime) => {
     setSelectedShowtime(st);
     setView('seats');
-    try {
-      const response = await axios.get(`http://localhost:8080/api/v1/bookings/tickets?showtimeId=${st.id}`);
-      setBookedSeats(response.data.map((t: any) => t.seatId));
-    } catch (err) { setErrorMessage("Could not load seat map."); }
+    fetchBookedSeats(st.id);
   };
 
   const handleHoldSeat = async (seatId: string) => {
     setErrorMessage("");
-    setSelectedSeat(seatId);
     try {
       await axios.post("http://localhost:8080/api/v1/bookings/hold", null, {
         params: { showtimeId: selectedShowtime?.id, seatId, userId }
       });
+      setSelectedSeat(seatId);
       setView('checkout');
     } catch (error: any) {
-      setErrorMessage(error.response?.data || "Seat unavailable.");
-      setSelectedSeat(null);
+      const message = error.response?.data && typeof error.response.data === 'string'
+        ? error.response.data
+        : (error.response?.data?.message || "Seat unavailable. Please try another.");
+      setErrorMessage(message);
     }
   };
 
@@ -78,7 +94,12 @@ export default function CinemaHome() {
         params: { showtimeId: selectedShowtime?.id, seatId: selectedSeat, userId, creditCardNumber: "4111222233334444" }
       });
       setView('success');
-    } catch (error: any) { setErrorMessage("Checkout failed."); }
+    } catch (error: any) { 
+      const message = error.response?.data && typeof error.response.data === 'string'
+        ? error.response.data
+        : (error.response?.data?.message || "Checkout failed.");
+      setErrorMessage(message);
+    }
   };
 
   const resetFlow = () => {
@@ -100,7 +121,6 @@ export default function CinemaHome() {
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-6xl md:text-8xl font-black mb-6 tracking-tighter">
             GREAT STORIES. <span className="text-rose-600">BIG SCREEN.</span>
           </motion.h1>
-          <p className="text-xl text-neutral-400 max-w-2xl mx-auto">Book your tickets for the latest blockbusters at Dons Plaza.</p>
         </section>
       )}
 
@@ -113,16 +133,7 @@ export default function CinemaHome() {
 
         {errorMessage && <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 mb-8 rounded-xl">{errorMessage}</div>}
 
-        {/* View Switcher */}
-        {view === 'movies' && (
-          <div className="space-y-20">
-            <section>
-              <h2 className="text-3xl font-bold mb-10 flex items-center gap-3"><span className="w-1 h-8 bg-rose-600 rounded-full"></span> Now Showing</h2>
-              <MovieList movies={movies} onSelectMovie={handleSelectMovie} />
-            </section>
-          </div>
-        )}
-        
+        {view === 'movies' && <MovieList movies={movies} onSelectMovie={handleSelectMovie} />}
         {view === 'browse' && <BrowseMovies movies={movies} onSelectMovie={handleSelectMovie} />}
         {view === 'showtimes' && selectedMovie && <ShowtimeList selectedMovie={selectedMovie} showtimes={showtimes} onSelectShowtime={handleSelectShowtime} />}
         {view === 'seats' && selectedShowtime && <SeatMap selectedShowtime={selectedShowtime} bookedSeats={bookedSeats} onHoldSeat={handleHoldSeat} />}
