@@ -3,6 +3,7 @@ package com.ticketing.app.catalog.dto;
 import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Data
 public class BulkShowtimeRequest {
@@ -10,6 +11,7 @@ public class BulkShowtimeRequest {
     private Long screenId;
     private LocalDate startDate;
     private LocalDate endDate;
-    private LocalTime startTime;
+    // Changed to a List so the frontend can send multiple times!
+    private List<LocalTime> startTimes; 
     private Double ticketPrice;
 }

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,7 +36,7 @@ public class CatalogService {
         return showtimeRepository.save(showtime);
     }
 
-    // NEW: Bulk Scheduling Logic
+    // UPDATED: Now handles multiple times per day!
     public List<Showtime> bulkAddShowtimes(BulkShowtimeRequest request) {
         Movie movie = movieRepository.findById(request.getMovieId())
                 .orElseThrow(() -> new RuntimeException("Movie not found"));
@@ -46,21 +47,22 @@ public class CatalogService {
         LocalDate currentDate = request.getStartDate();
 
         while (!currentDate.isAfter(request.getEndDate())) {
-            Showtime st = new Showtime();
-            st.setMovie(movie);
-            st.setScreen(screen);
-            st.setStartTime(LocalDateTime.of(currentDate, request.getStartTime()));
-            st.setTicketPrice(request.getTicketPrice());
-            st.setStatus("SCHEDULED");
-            showtimesToSave.add(st);
-            
+            // Loop through each time provided by the admin for this specific date
+            for (LocalTime time : request.getStartTimes()) {
+                Showtime st = new Showtime();
+                st.setMovie(movie);
+                st.setScreen(screen);
+                st.setStartTime(LocalDateTime.of(currentDate, time));
+                st.setTicketPrice(request.getTicketPrice());
+                st.setStatus("SCHEDULED");
+                showtimesToSave.add(st);
+            }
             currentDate = currentDate.plusDays(1);
         }
 
         return showtimeRepository.saveAll(showtimesToSave);
     }
 
-    // NEW: Cancellation Logic
     public Showtime cancelShowtime(Long showtimeId) {
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new RuntimeException("Showtime not found"));
@@ -69,7 +71,6 @@ public class CatalogService {
     }
 
     public List<Showtime> getShowtimesByMovie(Long movieId) {
-        // Only return scheduled showtimes to the public!
         return showtimeRepository.findByMovieIdAndStatus(movieId, "SCHEDULED");
     }
 

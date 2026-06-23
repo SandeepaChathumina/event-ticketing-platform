@@ -1,5 +1,6 @@
 package com.ticketing.app.identity.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.util.Set;
@@ -15,6 +16,8 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
     
+    // NEW: Prevents password hashes from being sent to the frontend
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
     

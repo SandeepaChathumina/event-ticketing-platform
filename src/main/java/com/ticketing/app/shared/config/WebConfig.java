@@ -10,7 +10,9 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**") // Allow all endpoints
                 .allowedOrigins("http://localhost:3000") // Allow your Next.js app
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                // FIX: Added "PATCH" to the allowed methods list
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*");
     }
 }
+    

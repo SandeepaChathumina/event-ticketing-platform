@@ -222,7 +222,7 @@ export default function CinemaHome() {
         </section>
       )}
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-7xl mx-auto px-6 pt-32 pb-12">
         {view === "dashboard" ? (
           <AdminDashboard />
         ) : (
