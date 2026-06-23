@@ -31,7 +31,7 @@ export default function CinemaHome() {
   
   const [selectedMovie, setSelectedMovie] = useState<Movie>();
   const [selectedShowtime, setSelectedShowtime] = useState<Showtime>();
-  const [selectedSeat, setSelectedSeat] = useState<string>();
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]); // NOW AN ARRAY!
   
   const [user, setUser] = useState<{ token: string; email: string } | null>(null);
   const [userId, setUserId] = useState(() => "User-" + Math.floor(Math.random() * 10000));
@@ -41,15 +41,9 @@ export default function CinemaHome() {
 
   // Helper function to guarantee a string is returned for error messages
   const getErrorMessage = (error: any, fallback: string): string => {
-    if (typeof error?.response?.data === "string") {
-      return error.response.data;
-    }
-    if (typeof error?.response?.data?.message === "string") {
-      return error.response.data.message;
-    }
-    if (typeof error?.message === "string") {
-      return error.message;
-    }
+    if (typeof error?.response?.data === "string") return error.response.data;
+    if (typeof error?.response?.data?.message === "string") return error.response.data.message;
+    if (typeof error?.message === "string") return error.message;
     return fallback;
   };
 
@@ -57,20 +51,20 @@ export default function CinemaHome() {
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const sessionId = query.get("session_id");
-    const urlSeatId = query.get("seat_id");
+    const urlSeatIds = query.get("seat_ids"); // NOW GRABS COMMA SEPARATED IDS
     const urlShowtimeId = query.get("showtime_id");
     const urlUserId = query.get("user_id");
 
-    if (sessionId && urlSeatId && urlShowtimeId && urlUserId) {
+    if (sessionId && urlSeatIds && urlShowtimeId && urlUserId) {
       axios.post("http://localhost:8080/api/v1/bookings/checkout", null, {
         params: {
           showtimeId: urlShowtimeId,
-          seatId: urlSeatId,
+          seatIds: urlSeatIds,
           userId: urlUserId,
           creditCardNumber: "stripe_session_" + sessionId,
         },
       }).then(() => {
-        setSelectedSeat(urlSeatId);
+        setSelectedSeats(urlSeatIds.split(',')); // Turn back into array
         setUserId(urlUserId); 
         setView("success");
         window.history.replaceState(null, "", "/"); // Clean the URL
@@ -127,17 +121,18 @@ export default function CinemaHome() {
     setView("seats");
   };
 
-  const handleHoldSeat = async (seatId: string) => {
+  const handleHoldSeats = async (seatIds: string[]) => {
     setErrorMessage("");
     try {
+      // Spring Boot reads a comma-separated string as a List<String>
       await axios.post(`http://localhost:8080/api/v1/bookings/hold`, null, {
-        params: { showtimeId: selectedShowtime?.id, seatId: seatId, userId: userId }
+        params: { showtimeId: selectedShowtime?.id, seatIds: seatIds.join(','), userId: userId }
       });
-      setSelectedSeat(seatId);
+      setSelectedSeats(seatIds);
       setView("checkout");
     } catch (error: any) {
-      setErrorMessage("Seat is already taken or unavailable.");
-      setSelectedSeat(undefined);
+      setErrorMessage("One or more seats are already taken or unavailable.");
+      setSelectedSeats([]);
     }
   };
 
@@ -148,12 +143,11 @@ export default function CinemaHome() {
     try {
       const response = await axios.post("http://localhost:8080/api/v1/payments/create-checkout-session", {
         showtimeId: selectedShowtime?.id,
-        seatId: selectedSeat,
+        seatIds: selectedSeats, // Send array of seats
         userId: userId,
         amount: selectedShowtime?.ticketPrice
       });
 
-      // NEW STRIPE STANDARD: Directly navigate to the session URL provided by the backend!
       if (response.data && response.data.url) {
         window.location.href = response.data.url;
       } else {
@@ -161,7 +155,6 @@ export default function CinemaHome() {
       }
     } catch (error: any) {
       console.error("Checkout Error Details:", error);
-      // We are now using the getErrorMessage helper to show the REAL error from the backend!
       setErrorMessage(getErrorMessage(error, "Checkout failed. Is your Spring Boot backend running?"));
       setIsProcessingPayment(false);
     }
@@ -171,7 +164,7 @@ export default function CinemaHome() {
     setView("movies");
     setSelectedMovie(undefined);
     setSelectedShowtime(undefined);
-    setSelectedSeat(undefined);
+    setSelectedSeats([]);
     setErrorMessage("");
   };
 
@@ -207,7 +200,6 @@ export default function CinemaHome() {
         onLoginSuccess={handleLoginSuccess} 
       />
 
-      {/* Payment Gateway Processing Overlay */}
       {isProcessingPayment && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-neutral-950/90 backdrop-blur-md">
           <div className="text-center bg-neutral-900 p-10 rounded-3xl border border-neutral-800 shadow-2xl">
@@ -252,17 +244,21 @@ export default function CinemaHome() {
 
             {view === "movies" && <MovieList movies={movies} onSelectMovie={handleSelectMovie} />}
             {view === "browse" && <BrowseMovies movies={movies} onSelectMovie={handleSelectMovie} />}
+            
             {view === "showtimes" && selectedMovie && (
               <ShowtimeList selectedMovie={selectedMovie} showtimes={showtimes} onSelectShowtime={handleSelectShowtime} />
             )}
+            
             {view === "seats" && selectedShowtime && (
-              <SeatMap selectedShowtime={selectedShowtime} bookedSeats={bookedSeats} onHoldSeat={handleHoldSeat} />
+              <SeatMap selectedShowtime={selectedShowtime} bookedSeats={bookedSeats} onHoldSeats={handleHoldSeats} />
             )}
-            {view === "checkout" && selectedShowtime && selectedSeat && (
-              <CheckoutPanel selectedShowtime={selectedShowtime} selectedSeat={selectedSeat} onCheckout={handleCheckout} />
+            
+            {view === "checkout" && selectedShowtime && selectedSeats.length > 0 && (
+              <CheckoutPanel selectedShowtime={selectedShowtime} selectedSeats={selectedSeats} onCheckout={handleCheckout} />
             )}
-            {view === "success" && selectedSeat && (
-              <SuccessTicket selectedSeat={selectedSeat} userId={userId} onReset={resetFlow} />
+            
+            {view === "success" && selectedSeats.length > 0 && (
+              <SuccessTicket selectedSeats={selectedSeats} userId={userId} onReset={resetFlow} />
             )}
           </>
         )}

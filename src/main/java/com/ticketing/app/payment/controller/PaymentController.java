@@ -20,11 +20,11 @@ public class PaymentController {
     @PostMapping("/create-checkout-session")
     public ResponseEntity<?> createCheckoutSession(@RequestBody PaymentRequest request) {
         try {
-            log.info("Initiating Stripe checkout for Seat: {} by User: {}", request.getSeatId(), request.getUserId());
+            log.info("Initiating Stripe checkout for Seats: {} by User: {}", request.getSeatIds(), request.getUserId());
             Map<String, String> response = paymentService.createCheckoutSession(
                     request.getAmount(),
                     request.getShowtimeId(),
-                    request.getSeatId(),
+                    request.getSeatIds(), // Passing the list of seats
                     request.getUserId()
             );
             return ResponseEntity.ok(response);

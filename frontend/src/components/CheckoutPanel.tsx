@@ -4,20 +4,19 @@ import { Showtime } from "../types";
 
 interface CheckoutPanelProps {
   selectedShowtime?: Showtime;
-  selectedSeat?: string;
+  selectedSeats: string[];
   onCheckout: () => void;
 }
 
-export default function CheckoutPanel({ selectedShowtime, selectedSeat = "XX", onCheckout }: CheckoutPanelProps) {
-  // If selectedShowtime is completely undefined, don't attempt to render the panel
-  if (!selectedShowtime) {
-    return null;
-  }
+export default function CheckoutPanel({ selectedShowtime, selectedSeats, onCheckout }: CheckoutPanelProps) {
+  if (!selectedShowtime || selectedSeats.length === 0) return null;
 
-  // Safely extract properties with fallbacks to avoid crashes
   const movieTitle = selectedShowtime.movie?.title || "Unknown Movie";
   const screenName = selectedShowtime.screen?.name || "Unknown Screen";
-  const ticketPrice = selectedShowtime.ticketPrice ? selectedShowtime.ticketPrice.toFixed(2) : "0.00";
+  
+  // Calculate total price based on array length
+  const unitPrice = selectedShowtime.ticketPrice || 0;
+  const totalPrice = (unitPrice * selectedSeats.length).toFixed(2);
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md mx-auto">
@@ -32,9 +31,12 @@ export default function CheckoutPanel({ selectedShowtime, selectedSeat = "XX", o
         <div className="space-y-4 mb-8 text-neutral-300">
           <div className="flex justify-between"><span>Movie</span> <span className="font-bold text-white text-right">{movieTitle}</span></div>
           <div className="flex justify-between"><span>Screen</span> <span className="font-bold text-white">{screenName}</span></div>
-          <div className="flex justify-between"><span>Seat</span> <span className="font-bold text-rose-400">{selectedSeat}</span></div>
+          <div className="flex justify-between">
+            <span>Seats ({selectedSeats.length})</span> 
+            <span className="font-bold text-rose-400">{selectedSeats.join(", ")}</span>
+          </div>
           <div className="flex justify-between pt-4 border-t border-neutral-800">
-            <span>Total</span> <span className="font-bold text-xl text-white">${ticketPrice}</span>
+            <span>Total</span> <span className="font-bold text-xl text-white">${totalPrice}</span>
           </div>
         </div>
 
