@@ -1,5 +1,6 @@
 package com.ticketing.app.catalog.controller;
 
+import com.ticketing.app.catalog.dto.BulkShowtimeRequest;
 import com.ticketing.app.catalog.model.Movie;
 import com.ticketing.app.catalog.model.Screen;
 import com.ticketing.app.catalog.model.Showtime;
@@ -32,8 +33,21 @@ public class CatalogController {
         return ResponseEntity.ok(catalogService.addShowtime(showtime));
     }
 
+    // NEW: Bulk Scheduling Endpoint
+    @PostMapping("/showtimes/bulk")
+    public ResponseEntity<List<Showtime>> bulkAddShowtimes(@RequestBody BulkShowtimeRequest request) {
+        return ResponseEntity.ok(catalogService.bulkAddShowtimes(request));
+    }
+
+    // NEW: Cancel Endpoint
+    @PatchMapping("/showtimes/{id}/cancel")
+    public ResponseEntity<Showtime> cancelShowtime(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(catalogService.cancelShowtime(id));
+    }
+
+    // FIX: Added ("movieId") explicitly so Spring Boot doesn't throw a 400 error!
     @GetMapping("/showtimes")
-    public ResponseEntity<List<Showtime>> getShowtimes(@RequestParam Long movieId) {
+    public ResponseEntity<List<Showtime>> getShowtimes(@RequestParam("movieId") Long movieId) {
         return ResponseEntity.ok(catalogService.getShowtimesByMovie(movieId));
     }
 

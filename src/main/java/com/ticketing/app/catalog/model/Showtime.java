@@ -17,12 +17,10 @@ public class Showtime {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // A Showtime belongs to ONE Movie
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "movie_id", nullable = false)
     private Movie movie;
 
-    // A Showtime takes place in ONE Screen
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "screen_id", nullable = false)
     private Screen screen;
@@ -32,4 +30,9 @@ public class Showtime {
 
     @Column(nullable = false)
     private Double ticketPrice;
+
+    // FIX: Removed strict nullable=false and added a database-level default
+    // so PostgreSQL successfully applies this column to existing database rows!
+    @Column(columnDefinition = "varchar(255) default 'SCHEDULED'")
+    private String status = "SCHEDULED"; 
 }

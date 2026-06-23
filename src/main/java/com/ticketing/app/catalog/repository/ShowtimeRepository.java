@@ -7,6 +7,7 @@ import java.util.List;
 
 @Repository
 public interface ShowtimeRepository extends JpaRepository<Showtime, Long> {
-    // A custom method so we can easily find all showtimes for a specific movie!
     List<Showtime> findByMovieId(Long movieId);
+    // Needed to filter out canceled showtimes
+    List<Showtime> findByMovieIdAndStatus(Long movieId, String status); 
 }
