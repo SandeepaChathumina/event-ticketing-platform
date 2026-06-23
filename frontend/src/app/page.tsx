@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { motion } from "framer-motion";
 import { Film, ArrowLeft, Loader2 } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
 
 // Components
 import Navbar from "../components/Navbar";
@@ -18,45 +17,26 @@ import CheckoutPanel from "../components/CheckoutPanel";
 import SuccessTicket from "../components/SuccessTicket";
 import AuthModal from "../components/AuthModal";
 import AdminDashboard from "../components/AdminDashboard";
+
+// Types
 import { Movie, Showtime } from "../types";
 
-// Initialize Stripe outside of the component to avoid recreating the object on every render
-// Replace 'pk_test_...' with your actual Stripe Publishable Key
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_YOUR_STRIPE_KEY");
-
 export default function CinemaHome() {
+  // State Management
   const router = useRouter();
-  const [view, setView] = useState<
-    | "movies"
-    | "browse"
-    | "showtimes"
-    | "seats"
-    | "checkout"
-    | "success"
-    | "dashboard"
-  >("movies");
-  
+  const [view, setView] = useState<"movies" | "browse" | "showtimes" | "seats" | "checkout" | "success" | "dashboard">("movies");
   const [movies, setMovies] = useState<Movie[]>([]);
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [bookedSeats, setBookedSeats] = useState<string[]>([]);
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
-  const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
-  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
   
-  // Acts as a Guest ID by default, replaced by Email if logged in
-  const [userId, setUserId] = useState(
-    () => "User-" + Math.floor(Math.random() * 10000)
-  );
+  const [selectedMovie, setSelectedMovie] = useState<Movie>();
+  const [selectedShowtime, setSelectedShowtime] = useState<Showtime>();
+  const [selectedSeat, setSelectedSeat] = useState<string>();
   
-  const [errorMessage, setErrorMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  // Authentication State
+  const [user, setUser] = useState<{ token: string; email: string } | null>(null);
+  const [userId, setUserId] = useState(() => "User-" + Math.floor(Math.random() * 10000));
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [userToken, setUserToken] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  // Payment Gateway State
+  const [errorMessage, setErrorMessage] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Helper function to guarantee a string is returned for error messages
@@ -73,91 +53,91 @@ export default function CinemaHome() {
     return fallback;
   };
 
+  // Catch Stripe Redirect & Finalize Booking
   useEffect(() => {
-    fetchMovies();
+    const query = new URLSearchParams(window.location.search);
+    const sessionId = query.get("session_id");
+    const urlSeatId = query.get("seat_id");
+    const urlShowtimeId = query.get("showtime_id");
+    const urlUserId = query.get("user_id");
+
+    if (sessionId && urlSeatId && urlShowtimeId && urlUserId) {
+      axios.post("http://localhost:8080/api/v1/bookings/checkout", null, {
+        params: {
+          showtimeId: urlShowtimeId,
+          seatId: urlSeatId,
+          userId: urlUserId,
+          creditCardNumber: "stripe_session_" + sessionId,
+        },
+      }).then(() => {
+        setSelectedSeat(urlSeatId);
+        setUserId(urlUserId); 
+        setView("success");
+        window.history.replaceState(null, "", "/"); // Clean the URL
+      }).catch(err => {
+        console.error("Failed to finalize booking", err);
+      });
+    }
+  }, []);
+
+  // Initial Data Fetch
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await axios.get("http://localhost:8080/api/v1/catalog/movies");
+        setMovies(res.data);
+      } catch (err) {
+        console.error("Failed to fetch movies", err);
+      }
+    };
+    fetchData();
   }, []);
 
   // Polling effect: Refreshes booked seats every 3 seconds while in 'seats' view
   useEffect(() => {
     if (view === "seats" && selectedShowtime) {
       const interval = setInterval(() => {
-        fetchBookedSeats(selectedShowtime.id);
+        handleRefreshSeats(selectedShowtime.id);
       }, 3000);
       return () => clearInterval(interval);
     }
   }, [view, selectedShowtime]);
 
-  const fetchMovies = async () => {
+  const handleRefreshSeats = async (showtimeId: number) => {
     try {
-      const response = await axios.get(
-        "http://localhost:8080/api/v1/catalog/movies"
-      );
-      setMovies(response.data);
-    } catch (err) {
-      console.error("Failed to load movies", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLoginSuccess = (token: string, email: string, roles: string[]) => {
-    setUserToken(token);
-    setUserEmail(email);
-    setIsAuthModalOpen(false);
-
-    const cleanEmail = email.trim().toLowerCase();
-    setUserId(cleanEmail);
-
-    if (roles && roles.includes("ROLE_ADMIN")) {
-      setView("dashboard");
-    } else {
-      setView("movies");
-    }
-  };
-
-  const fetchBookedSeats = async (showtimeId: number) => {
-    try {
-      const response = await axios.get(
-        `http://localhost:8080/api/v1/bookings/tickets?showtimeId=${showtimeId}`
-      );
+      const response = await axios.get(`http://localhost:8080/api/v1/bookings/tickets?showtimeId=${showtimeId}`);
       setBookedSeats(response.data.map((t: any) => t.seatId));
     } catch (err) {
       console.error("Could not refresh seat map.", err);
     }
   };
 
-  const handleSelectMovie = async (movie: Movie) => {
+  // Event Handlers
+  const handleSelectMovie = (movie: Movie) => {
     setSelectedMovie(movie);
+    axios.get(`http://localhost:8080/api/v1/catalog/showtimes?movieId=${movie.id}`)
+      .then(res => setShowtimes(res.data))
+      .catch(err => setErrorMessage("Failed to load showtimes."));
     setView("showtimes");
-    try {
-      const response = await axios.get(
-        `http://localhost:8080/api/v1/catalog/showtimes?movieId=${movie.id}`
-      );
-      setShowtimes(response.data);
-    } catch (err: any) {
-      setErrorMessage(getErrorMessage(err, "Failed to load showtimes."));
-    }
   };
 
-  const handleSelectShowtime = async (st: Showtime) => {
-    setSelectedShowtime(st);
+  const handleSelectShowtime = (showtime: Showtime) => {
+    setSelectedShowtime(showtime);
+    handleRefreshSeats(showtime.id);
     setView("seats");
-    fetchBookedSeats(st.id);
   };
 
   const handleHoldSeat = async (seatId: string) => {
     setErrorMessage("");
     try {
-      await axios.post("http://localhost:8080/api/v1/bookings/hold", null, {
-        params: { showtimeId: selectedShowtime?.id, seatId, userId },
+      await axios.post(`http://localhost:8080/api/v1/bookings/hold`, null, {
+        params: { showtimeId: selectedShowtime?.id, seatId: seatId, userId: userId }
       });
       setSelectedSeat(seatId);
       setView("checkout");
     } catch (error: any) {
-      setErrorMessage(
-        getErrorMessage(error, "Seat unavailable. Please try another.")
-      );
-      setSelectedSeat(null);
+      setErrorMessage("Seat is already taken or unavailable.");
+      setSelectedSeat(undefined);
     }
   };
 
@@ -166,15 +146,6 @@ export default function CinemaHome() {
     setIsProcessingPayment(true);
 
     try {
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error("Stripe failed to initialize.");
-
-      /* =========================================================================
-         STRIPE INTEGRATION 
-         Uncomment this block once your Spring Boot backend has the Stripe endpoint
-         =========================================================================
-      
-      // 1. Create a checkout session on the backend
       const response = await axios.post("http://localhost:8080/api/v1/payments/create-checkout-session", {
         showtimeId: selectedShowtime?.id,
         seatId: selectedSeat,
@@ -182,73 +153,58 @@ export default function CinemaHome() {
         amount: selectedShowtime?.ticketPrice
       });
 
-      // 2. Redirect to Stripe's secure checkout page
-      const result = await stripe.redirectToCheckout({
-        sessionId: response.data.sessionId,
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message);
+      // NEW STRIPE STANDARD: Directly navigate to the session URL provided by the backend!
+      if (response.data && response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        throw new Error("Backend did not return a Stripe URL. Please update PaymentService.java.");
       }
-      
-      ========================================================================= */
-
-      // --- TEMPORARY SIMULATION UNTIL BACKEND STRIPE IS READY ---
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-
-      await axios.post("http://localhost:8080/api/v1/bookings/checkout", null, {
-        params: {
-          showtimeId: selectedShowtime?.id,
-          seatId: selectedSeat,
-          userId,
-          creditCardNumber: "tok_visa", // Sending a mock Stripe token instead of raw card
-        },
-      });
-      
-      setView("success");
-      // --------------------------------------------------------
-
     } catch (error: any) {
-      setErrorMessage(getErrorMessage(error, "Checkout failed during payment processing."));
-    } finally {
+      console.error("Checkout Error Details:", error);
+      // We are now using the getErrorMessage helper to show the REAL error from the backend!
+      setErrorMessage(getErrorMessage(error, "Checkout failed. Is your Spring Boot backend running?"));
       setIsProcessingPayment(false);
     }
   };
 
   const resetFlow = () => {
     setView("movies");
-    setSelectedMovie(null);
-    setSelectedShowtime(null);
-    setSelectedSeat(null);
+    setSelectedMovie(undefined);
+    setSelectedShowtime(undefined);
+    setSelectedSeat(undefined);
     setErrorMessage("");
   };
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-        <Film className="w-12 h-12 text-rose-500 animate-pulse" />
-      </div>
-    );
+  const handleLoginSuccess = (token: string, email: string, roles?: string[]) => {
+    setUser({ token, email });
+    setIsAuthModalOpen(false);
+    setUserId(email.trim().toLowerCase());
+
+    if (roles && roles.includes("ROLE_ADMIN")) {
+      setView("dashboard");
+    } else {
+      setView("movies");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50 relative">
-      <Navbar
-        onNavigateHome={resetFlow}
+      <Navbar 
+        onNavigateHome={resetFlow} 
         onNavigateBrowse={() => setView("browse")}
-        userEmail={userEmail}
+        userEmail={user?.email}
         onLoginClick={() => setIsAuthModalOpen(true)}
         onLogout={() => {
-          setUserToken(null);
-          setUserEmail(null);
+          setUser(null);
           setUserId("User-" + Math.floor(Math.random() * 10000));
           if (view === "dashboard") setView("movies");
         }}
       />
 
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        onLoginSuccess={handleLoginSuccess} 
       />
 
       {/* Payment Gateway Processing Overlay */}
@@ -294,39 +250,19 @@ export default function CinemaHome() {
               </div>
             )}
 
-            {view === "movies" && (
-              <MovieList movies={movies} onSelectMovie={handleSelectMovie} />
-            )}
-            {view === "browse" && (
-              <BrowseMovies movies={movies} onSelectMovie={handleSelectMovie} />
-            )}
+            {view === "movies" && <MovieList movies={movies} onSelectMovie={handleSelectMovie} />}
+            {view === "browse" && <BrowseMovies movies={movies} onSelectMovie={handleSelectMovie} />}
             {view === "showtimes" && selectedMovie && (
-              <ShowtimeList
-                selectedMovie={selectedMovie}
-                showtimes={showtimes}
-                onSelectShowtime={handleSelectShowtime}
-              />
+              <ShowtimeList selectedMovie={selectedMovie} showtimes={showtimes} onSelectShowtime={handleSelectShowtime} />
             )}
             {view === "seats" && selectedShowtime && (
-              <SeatMap
-                selectedShowtime={selectedShowtime}
-                bookedSeats={bookedSeats}
-                onHoldSeat={handleHoldSeat}
-              />
+              <SeatMap selectedShowtime={selectedShowtime} bookedSeats={bookedSeats} onHoldSeat={handleHoldSeat} />
             )}
             {view === "checkout" && selectedShowtime && selectedSeat && (
-              <CheckoutPanel
-                selectedShowtime={selectedShowtime}
-                selectedSeat={selectedSeat}
-                onCheckout={handleCheckout}
-              />
+              <CheckoutPanel selectedShowtime={selectedShowtime} selectedSeat={selectedSeat} onCheckout={handleCheckout} />
             )}
             {view === "success" && selectedSeat && (
-              <SuccessTicket
-                selectedSeat={selectedSeat}
-                userId={userId}
-                onReset={resetFlow}
-              />
+              <SuccessTicket selectedSeat={selectedSeat} userId={userId} onReset={resetFlow} />
             )}
           </>
         )}
