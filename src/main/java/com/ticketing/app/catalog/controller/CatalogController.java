@@ -28,6 +28,19 @@ public class CatalogController {
         return ResponseEntity.ok(catalogService.addScreen(screen));
     }
 
+    // --- RESTORED: Update Movie Endpoint ---
+    @PutMapping("/movies/{id}")
+    public ResponseEntity<Movie> updateMovie(@PathVariable("id") Long id, @RequestBody Movie movie) {
+        return ResponseEntity.ok(catalogService.updateMovie(id, movie));
+    }
+
+    // --- RESTORED: Delete Movie Endpoint ---
+    @DeleteMapping("/movies/{id}")
+    public ResponseEntity<Void> deleteMovie(@PathVariable("id") Long id) {
+        catalogService.deleteMovie(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/showtimes")
     public ResponseEntity<Showtime> addShowtime(@RequestBody Showtime showtime) {
         return ResponseEntity.ok(catalogService.addShowtime(showtime));

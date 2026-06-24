@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Users, Film, BarChart3, PlusCircle, CalendarDays, CheckCircle, Trash2, MonitorPlay, TrendingUp, Ticket, DollarSign } from "lucide-react";
+// FIX: Added the 'Edit' icon to the imports
+import { Users, Film, BarChart3, PlusCircle, CalendarDays, CheckCircle, Trash2, MonitorPlay, TrendingUp, Ticket, DollarSign, Edit } from "lucide-react";
 import { Movie, Showtime } from "../types";
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -48,6 +49,7 @@ export default function AdminDashboard() {
 
   // --- Add Movie State ---
   const [isAddingMovie, setIsAddingMovie] = useState(false);
+  const [editingMovieId, setEditingMovieId] = useState<number | null>(null); // NEW: Track which movie is being edited
   const [movieSuccess, setMovieSuccess] = useState("");
   const [movieForm, setMovieForm] = useState({
     title: "",
@@ -110,28 +112,68 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAddMovie = async (e: React.FormEvent) => {
+  // FIX: Combined Add and Update logic into a single Save handler
+  const handleSaveMovie = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:8080/api/v1/catalog/movies", {
-        title: movieForm.title,
-        description: movieForm.description,
-        posterUrl: movieForm.posterUrl,
-        durationMinutes: parseInt(movieForm.durationMinutes),
-        ageRating: movieForm.ageRating
-      });
+      if (editingMovieId) {
+        // UPDATE Existing Movie
+        await axios.put(`http://localhost:8080/api/v1/catalog/movies/${editingMovieId}`, {
+          title: movieForm.title,
+          description: movieForm.description,
+          posterUrl: movieForm.posterUrl,
+          durationMinutes: parseInt(movieForm.durationMinutes as string),
+          ageRating: movieForm.ageRating
+        });
+        setMovieSuccess("Movie updated successfully!");
+      } else {
+        // ADD New Movie
+        await axios.post("http://localhost:8080/api/v1/catalog/movies", {
+          title: movieForm.title,
+          description: movieForm.description,
+          posterUrl: movieForm.posterUrl,
+          durationMinutes: parseInt(movieForm.durationMinutes as string),
+          ageRating: movieForm.ageRating
+        });
+        setMovieSuccess("Movie added successfully!");
+      }
       
-      setMovieSuccess("Movie added successfully!");
       setMovieForm({ title: "", description: "", posterUrl: "", durationMinutes: "", ageRating: "" });
-      fetchMovies(); // Refresh the dropdowns
+      setEditingMovieId(null);
+      fetchMovies(); // Refresh the dropdowns and tables
       
       setTimeout(() => {
         setMovieSuccess("");
         setIsAddingMovie(false);
       }, 3000);
     } catch (err) {
-      console.error("Failed to add movie", err);
-      alert("Failed to add movie. Please check your backend.");
+      console.error("Failed to save movie", err);
+      alert("Failed to save movie. Please check your backend.");
+    }
+  };
+
+  // NEW: Handle Edit Button Click
+  const handleEditClick = (movie: Movie) => {
+    setEditingMovieId(movie.id);
+    setMovieForm({
+      title: movie.title,
+      description: movie.description,
+      posterUrl: movie.posterUrl,
+      durationMinutes: movie.durationMinutes.toString(),
+      ageRating: movie.ageRating
+    });
+    setIsAddingMovie(true); // Open the form
+  };
+
+  // NEW: Handle Delete Button Click
+  const handleDeleteMovie = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this movie? Note: You cannot delete a movie if it has active showtimes or bookings linked to it.")) return;
+    try {
+      await axios.delete(`http://localhost:8080/api/v1/catalog/movies/${id}`);
+      fetchMovies(); // Refresh list after deletion
+    } catch (err) {
+      console.error("Failed to delete movie", err);
+      alert("Failed to delete movie. Ensure all showtimes linked to this movie are deleted first.");
     }
   };
 
@@ -320,11 +362,11 @@ export default function AdminDashboard() {
         
         {/* --- MOVIES TAB --- */}
         {activeTab === 'movies' && (
-          <div className="max-w-2xl">
+          <div className="max-w-4xl">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold">Movie Management</h1>
               {!isAddingMovie && (
-                <button onClick={() => setIsAddingMovie(true)} className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 px-4 py-2 rounded-lg font-bold transition">
+                <button onClick={() => { setEditingMovieId(null); setMovieForm({ title: "", description: "", posterUrl: "", durationMinutes: "", ageRating: "" }); setIsAddingMovie(true); }} className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 px-4 py-2 rounded-lg font-bold transition">
                   <PlusCircle className="w-5 h-5" /> Add Movie
                 </button>
               )}
@@ -337,7 +379,7 @@ export default function AdminDashboard() {
             )}
 
             {isAddingMovie ? (
-              <form onSubmit={handleAddMovie} className="space-y-6 bg-neutral-950 p-6 rounded-2xl border border-neutral-800">
+              <form onSubmit={handleSaveMovie} className="space-y-6 bg-neutral-950 p-6 rounded-2xl border border-neutral-800 mb-8">
                 <div>
                   <label className="block text-sm font-bold text-neutral-400 mb-2">Movie Title</label>
                   <input type="text" required value={movieForm.title} onChange={e => setMovieForm({...movieForm, title: e.target.value})} className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-white focus:border-rose-500 focus:outline-none" />
@@ -366,16 +408,49 @@ export default function AdminDashboard() {
 
                 <div className="flex gap-4 pt-2">
                   <button type="submit" className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 rounded-xl transition">
-                    Save Movie
+                    {editingMovieId ? "Update Movie" : "Save Movie"}
                   </button>
-                  <button type="button" onClick={() => setIsAddingMovie(false)} className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-4 rounded-xl transition">
+                  <button type="button" onClick={() => { setIsAddingMovie(false); setEditingMovieId(null); }} className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-bold py-4 rounded-xl transition">
                     Cancel
                   </button>
                 </div>
               </form>
             ) : (
-              <div className="text-neutral-400 bg-neutral-950 p-8 rounded-2xl border border-neutral-800 text-center">
-                Click "Add Movie" to insert a new film into the database.
+              // NEW: Movie List Table
+              <div className="bg-neutral-950 rounded-2xl border border-neutral-800 overflow-hidden">
+                <table className="w-full text-left">
+                  <thead className="bg-neutral-900 border-b border-neutral-800 text-neutral-400">
+                    <tr>
+                      <th className="p-4 font-bold">Title</th>
+                      <th className="p-4 font-bold">Duration</th>
+                      <th className="p-4 font-bold">Rating</th>
+                      <th className="p-4 font-bold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-800">
+                    {movies.map(m => (
+                      <tr key={m.id} className="hover:bg-neutral-900/50 transition">
+                        <td className="p-4 text-white font-medium flex items-center gap-3">
+                          <img src={m.posterUrl} alt={m.title} className="w-10 h-14 object-cover rounded shadow-sm border border-neutral-800" />
+                          {m.title}
+                        </td>
+                        <td className="p-4 text-neutral-400">{m.durationMinutes}m</td>
+                        <td className="p-4 text-neutral-400">{m.ageRating}</td>
+                        <td className="p-4 flex justify-end gap-2 items-center h-full mt-2">
+                          <button onClick={() => handleEditClick(m)} className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition" title="Edit Movie">
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button onClick={() => handleDeleteMovie(m.id)} className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition" title="Delete Movie">
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {movies.length === 0 && (
+                  <div className="p-8 text-center text-neutral-500">No movies found in the database.</div>
+                )}
               </div>
             )}
           </div>

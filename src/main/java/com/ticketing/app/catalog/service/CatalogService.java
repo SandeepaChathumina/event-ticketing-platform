@@ -36,7 +36,35 @@ public class CatalogService {
         return showtimeRepository.save(showtime);
     }
 
-    // UPDATED: Now handles multiple times per day!
+    // --- RESTORED: Update Movie Logic ---
+    @org.springframework.transaction.annotation.Transactional
+    public Movie updateMovie(Long id, Movie movieDetails) {
+        Movie movie = movieRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Movie not found"));
+        
+        movie.setTitle(movieDetails.getTitle());
+        movie.setDescription(movieDetails.getDescription());
+        movie.setPosterUrl(movieDetails.getPosterUrl());
+        movie.setDurationMinutes(movieDetails.getDurationMinutes());
+        movie.setAgeRating(movieDetails.getAgeRating());
+        
+        return movieRepository.save(movie);
+    }
+
+    // --- RESTORED & IMPROVED: Delete Movie Logic ---
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteMovie(Long id) {
+        // 1. Delete all showtimes linked to this movie first to prevent Foreign Key constraint errors
+        List<Showtime> linkedShowtimes = showtimeRepository.findByMovieId(id);
+        if (!linkedShowtimes.isEmpty()) {
+            showtimeRepository.deleteAll(linkedShowtimes);
+        }
+
+        // 2. Safely delete the movie
+        movieRepository.deleteById(id);
+    }
+
+    // NEW: Bulk Scheduling Logic
     public List<Showtime> bulkAddShowtimes(BulkShowtimeRequest request) {
         Movie movie = movieRepository.findById(request.getMovieId())
                 .orElseThrow(() -> new RuntimeException("Movie not found"));
