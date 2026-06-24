@@ -22,6 +22,9 @@ public class AuthService {
     private final JwtUtil jwtUtil;
 
     public void registerUser(String email, String password) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("Error: Email is already in use!");
+        }
         User user = new User();
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
