@@ -1,34 +1,25 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-// FIX: Added the 'Edit' icon to the imports
 import { Users, Film, BarChart3, PlusCircle, CalendarDays, CheckCircle, Trash2, MonitorPlay, TrendingUp, Ticket, DollarSign, Edit } from "lucide-react";
 import { Movie, Showtime } from "../types";
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, Legend
+  BarChart, Bar
 } from 'recharts';
 
-const REVENUE_DATA = [
-  { name: 'Mon', revenue: 1200 },
-  { name: 'Tue', revenue: 1900 },
-  { name: 'Wed', revenue: 1500 },
-  { name: 'Thu', revenue: 2200 },
-  { name: 'Fri', revenue: 3800 },
-  { name: 'Sat', revenue: 5100 },
-  { name: 'Sun', revenue: 4200 },
-];
-
-const MOVIE_PERFORMANCE_DATA = [
-  { title: 'Dune: Part Two', sales: 450 },
-  { title: 'Deadpool & Wolverine', sales: 380 },
-  { title: 'Inside Out 3', sales: 520 },
-  { title: 'Oppenheimer', sales: 210 },
-];
-
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('analytics'); // Defaulting to analytics to see it immediately
+  const [activeTab, setActiveTab] = useState('analytics'); 
   const [successMessage, setSuccessMessage] = useState("");
   const [movies, setMovies] = useState<Movie[]>([]);
+
+  // --- Real Analytics State ---
+  const [analytics, setAnalytics] = useState({
+    totalRevenue7d: 0,
+    ticketsSold7d: 0,
+    activeUsers: 0,
+    revenueData: [],
+    moviePerformanceData: []
+  });
 
   // --- Bulk Scheduling State ---
   const [bulkForm, setBulkForm] = useState({
@@ -49,7 +40,7 @@ export default function AdminDashboard() {
 
   // --- Add Movie State ---
   const [isAddingMovie, setIsAddingMovie] = useState(false);
-  const [editingMovieId, setEditingMovieId] = useState<number | null>(null); // NEW: Track which movie is being edited
+  const [editingMovieId, setEditingMovieId] = useState<number | null>(null);
   const [movieSuccess, setMovieSuccess] = useState("");
   const [movieForm, setMovieForm] = useState({
     title: "",
@@ -59,11 +50,20 @@ export default function AdminDashboard() {
     ageRating: ""
   });
 
-  // Fetch movies on load for dropdowns
   useEffect(() => {
     fetchMovies();
     fetchUsers();
+    fetchAnalytics();
   }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      const response = await axios.get("http://localhost:8080/api/v1/analytics");
+      setAnalytics(response.data);
+    } catch (err) {
+      console.error("Failed to load analytics", err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -83,7 +83,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- Handlers ---
   const handleBulkSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -104,7 +103,6 @@ export default function AdminDashboard() {
       setTimeout(() => setSuccessMessage(""), 5000);
       setBulkForm({ movieId: "", screenId: "", startDate: "", endDate: "", startTimes: "", ticketPrice: "" });
       
-      // Refresh showtimes if the admin is currently managing the same movie
       if (manageMovieId === bulkForm.movieId) fetchShowtimes(manageMovieId);
     } catch (err) {
       console.error("Failed to schedule in bulk", err);
@@ -112,12 +110,10 @@ export default function AdminDashboard() {
     }
   };
 
-  // FIX: Combined Add and Update logic into a single Save handler
   const handleSaveMovie = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingMovieId) {
-        // UPDATE Existing Movie
         await axios.put(`http://localhost:8080/api/v1/catalog/movies/${editingMovieId}`, {
           title: movieForm.title,
           description: movieForm.description,
@@ -127,7 +123,6 @@ export default function AdminDashboard() {
         });
         setMovieSuccess("Movie updated successfully!");
       } else {
-        // ADD New Movie
         await axios.post("http://localhost:8080/api/v1/catalog/movies", {
           title: movieForm.title,
           description: movieForm.description,
@@ -140,7 +135,7 @@ export default function AdminDashboard() {
       
       setMovieForm({ title: "", description: "", posterUrl: "", durationMinutes: "", ageRating: "" });
       setEditingMovieId(null);
-      fetchMovies(); // Refresh the dropdowns and tables
+      fetchMovies(); 
       
       setTimeout(() => {
         setMovieSuccess("");
@@ -152,7 +147,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // NEW: Handle Edit Button Click
   const handleEditClick = (movie: Movie) => {
     setEditingMovieId(movie.id);
     setMovieForm({
@@ -162,15 +156,14 @@ export default function AdminDashboard() {
       durationMinutes: movie.durationMinutes.toString(),
       ageRating: movie.ageRating
     });
-    setIsAddingMovie(true); // Open the form
+    setIsAddingMovie(true); 
   };
 
-  // NEW: Handle Delete Button Click
   const handleDeleteMovie = async (id: number) => {
     if (!confirm("Are you sure you want to delete this movie? Note: You cannot delete a movie if it has active showtimes or bookings linked to it.")) return;
     try {
       await axios.delete(`http://localhost:8080/api/v1/catalog/movies/${id}`);
-      fetchMovies(); // Refresh list after deletion
+      fetchMovies(); 
     } catch (err) {
       console.error("Failed to delete movie", err);
       alert("Failed to delete movie. Ensure all showtimes linked to this movie are deleted first.");
@@ -185,13 +178,10 @@ export default function AdminDashboard() {
     }
     try {
       const response = await axios.get(`http://localhost:8080/api/v1/catalog/showtimes?movieId=${movieId}`);
-      
-      // FIX: Filter out past showtimes so the admin only sees current and future ones
       const now = new Date();
       const upcomingShowtimes = response.data.filter((st: Showtime) => {
         return new Date(st.startTime) >= now;
       });
-      
       setExistingShowtimes(upcomingShowtimes);
     } catch (err) {
       console.error("Failed to fetch showtimes", err);
@@ -200,10 +190,8 @@ export default function AdminDashboard() {
 
   const handleCancelShowtime = async (showtimeId: number) => {
     if (!confirm("Are you sure you want to cancel this showtime? Users will no longer be able to book it.")) return;
-    
     try {
       await axios.patch(`http://localhost:8080/api/v1/catalog/showtimes/${showtimeId}/cancel`);
-      // Remove it from the local list instantly
       setExistingShowtimes(existingShowtimes.filter(st => st.id !== showtimeId));
     } catch (err) {
       console.error("Failed to cancel showtime", err);
@@ -249,8 +237,8 @@ export default function AdminDashboard() {
                   <div className="p-3 bg-green-500/10 text-green-500 rounded-xl"><DollarSign className="w-6 h-6" /></div>
                   <div className="text-neutral-400 font-bold">Total Revenue (7d)</div>
                 </div>
-                <div className="text-4xl font-black text-white">$19,900</div>
-                <div className="text-green-500 text-sm font-bold mt-2 flex items-center gap-1"><TrendingUp className="w-4 h-4" /> +12.5% from last week</div>
+                <div className="text-4xl font-black text-white">LKR {analytics.totalRevenue7d.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                <div className="text-green-500 text-sm font-bold mt-2 flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Live Data</div>
               </div>
               
               <div className="bg-neutral-950 p-6 rounded-2xl border border-neutral-800 shadow-lg">
@@ -258,8 +246,8 @@ export default function AdminDashboard() {
                   <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl"><Ticket className="w-6 h-6" /></div>
                   <div className="text-neutral-400 font-bold">Tickets Sold (7d)</div>
                 </div>
-                <div className="text-4xl font-black text-white">1,560</div>
-                <div className="text-rose-500 text-sm font-bold mt-2 flex items-center gap-1"><TrendingUp className="w-4 h-4" /> +8.2% from last week</div>
+                <div className="text-4xl font-black text-white">{analytics.ticketsSold7d.toLocaleString()}</div>
+                <div className="text-rose-500 text-sm font-bold mt-2 flex items-center gap-1"><TrendingUp className="w-4 h-4" /> Live Data</div>
               </div>
 
               <div className="bg-neutral-950 p-6 rounded-2xl border border-neutral-800 shadow-lg">
@@ -267,7 +255,7 @@ export default function AdminDashboard() {
                   <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl"><Users className="w-6 h-6" /></div>
                   <div className="text-neutral-400 font-bold">Active Users</div>
                 </div>
-                <div className="text-4xl font-black text-white">842</div>
+                <div className="text-4xl font-black text-white">{analytics.activeUsers.toLocaleString()}</div>
                 <div className="text-neutral-500 text-sm font-bold mt-2">Currently registered in system</div>
               </div>
             </div>
@@ -279,7 +267,7 @@ export default function AdminDashboard() {
                 <h2 className="text-xl font-bold mb-6">Weekly Revenue Trend</h2>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <AreaChart data={analytics.revenueData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#e11d48" stopOpacity={0.3}/>
@@ -288,8 +276,14 @@ export default function AdminDashboard() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                       <XAxis dataKey="name" stroke="#525252" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#525252" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                      <YAxis stroke="#525252" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `LKR ${value}`} width={80} />
                       <RechartsTooltip 
+                        formatter={(value) => {
+                          if (typeof value === 'number') {
+                            return [`LKR ${value.toFixed(2)}`, 'Revenue'];
+                          }
+                          return ['LKR 0.00', 'Revenue'];
+                        }}
                         contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#262626', borderRadius: '12px', color: '#fff' }}
                         itemStyle={{ color: '#e11d48', fontWeight: 'bold' }}
                       />
@@ -304,12 +298,18 @@ export default function AdminDashboard() {
                 <h2 className="text-xl font-bold mb-6">Ticket Sales by Movie</h2>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={MOVIE_PERFORMANCE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} layout="vertical">
+                    <BarChart data={analytics.moviePerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="#262626" horizontal={false} />
                       <XAxis type="number" stroke="#525252" fontSize={12} tickLine={false} axisLine={false} />
                       <YAxis dataKey="title" type="category" stroke="#a3a3a3" fontSize={11} tickLine={false} axisLine={false} width={100} />
                       <RechartsTooltip 
-                        cursor={{fill: '#171717'}}
+                        formatter={(value) => {
+                          if (typeof value === 'number') {
+                            return [value, 'Tickets Sold'];
+                          }
+                          return [0, 'Tickets Sold'];
+                        }}
+                        cursor={{ fill: '#171717' }}
                         contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#262626', borderRadius: '12px', color: '#fff' }}
                       />
                       <Bar dataKey="sales" fill="#e11d48" radius={[0, 4, 4, 0]} barSize={24} />
@@ -416,7 +416,6 @@ export default function AdminDashboard() {
                 </div>
               </form>
             ) : (
-              // NEW: Movie List Table
               <div className="bg-neutral-950 rounded-2xl border border-neutral-800 overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-neutral-900 border-b border-neutral-800 text-neutral-400">
@@ -516,7 +515,7 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-neutral-400 mb-2">Ticket Price ($)</label>
+                    <label className="block text-sm font-bold text-neutral-400 mb-2">Ticket Price (LKR)</label>
                     <input type="number" step="0.01" required value={bulkForm.ticketPrice} onChange={e => setBulkForm({...bulkForm, ticketPrice: e.target.value})} className="w-full bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-white focus:border-rose-500 focus:outline-none" />
                   </div>
                 </div>

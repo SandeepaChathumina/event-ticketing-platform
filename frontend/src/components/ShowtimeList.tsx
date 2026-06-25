@@ -86,7 +86,7 @@ export default function ShowtimeList({ selectedMovie, showtimes, onSelectShowtim
                       {new Date(st.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </div>
                     <div className="text-neutral-400 font-mono flex justify-between items-center">
-                      <span>${st.ticketPrice?.toFixed(2) || "0.00"}</span>
+                      <span>LKR {st.ticketPrice?.toFixed(2) || "0.00"}</span>
                     </div>
                   </button>
                 ))}

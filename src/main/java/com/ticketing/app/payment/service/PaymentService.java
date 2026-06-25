@@ -39,7 +39,7 @@ public class PaymentService {
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(totalQuantity) // Charge dynamic total based on number of seats
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency("usd")
+                                .setCurrency("lkr")
                                 .setUnitAmount(amountInCents)
                                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                         .setName("Cinema Tickets - Seats: " + seatIdsString)

@@ -36,7 +36,7 @@ export default function CheckoutPanel({ selectedShowtime, selectedSeats, onCheck
             <span className="font-bold text-rose-400">{selectedSeats.join(", ")}</span>
           </div>
           <div className="flex justify-between pt-4 border-t border-neutral-800">
-            <span>Total</span> <span className="font-bold text-xl text-white">${totalPrice}</span>
+            <span>Total</span> <span className="font-bold text-xl text-white">LKR {totalPrice}</span>
           </div>
         </div>
 
